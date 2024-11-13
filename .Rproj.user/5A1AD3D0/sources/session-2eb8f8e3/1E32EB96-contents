@@ -1,0 +1,190 @@
+setwd("~/Desktop/PhD/SAVER/RISEST")
+library(SRTsim)
+library(ggplot2)
+library(Seurat)
+find_neighbors <- function(spatial, thresh= 0.2){
+  xmin <- min(spatial[,1])
+  xmax <- max(spatial[,1])
+  ymin <- min(spatial[,2])
+  ymax <- max(spatial[,2])
+  spatial[,'x'] <- (spatial[,1] - xmin)/(xmax - xmin)
+  spatial[,'y'] <- (spatial[,2] - ymin)/(ymax - ymin)
+  n <- nrow(spatial)
+  neighbors <- matrix(nrow = n,ncol = n)
+  rownames(neighbors) <- colnames(neighbors) <- rownames(spatial)
+  for (i in c(1:n)){
+    neighbors[,i] <- (abs(spatial[,'x'] - spatial[i,'x']) < thresh) & (abs(spatial[,'y'] - spatial[i,'y']) < thresh)
+  }
+  diag(neighbors) <- FALSE
+  return(neighbors)
+}
+
+# Sample ID
+sample_IDs <- c(151507:151510,151669:151676)
+sample <- sample_IDs[2]
+print(sample)
+
+# Spot Label 
+ground_truth <- read.csv(paste0('Dataset/',sample,'/cluster_labels.csv'),header = TRUE)
+# Exclude spots with NA ground truth
+ground_truth <- ground_truth[!is.na(ground_truth[,'ground_truth']),]
+rownames(ground_truth) <- lapply(ground_truth[,'key'],function(y) sub("^.*?_", "",y))
+spots <- rownames(ground_truth)
+K <- length(unique(ground_truth$ground_truth))
+
+# Spot Position
+position_path <- paste0('Dataset/', sample, '/tissue_positions_list.csv')
+spot_position <- read.csv(position_path, header = FALSE)
+rownames(spot_position) <- spot_position[,1]
+spot_position <- spot_position[,-1]
+# Order the spots according to their relative order in ground truth matrix
+spot_position <- spot_position[match(spots,rownames(spot_position)),]
+colnames(spot_position) <- c('1','2','3',"X",'Y')
+spot_position <- spot_position[,c("X","Y")]
+
+# Metadata
+metadata <- cbind(spot_position, ground_truth$ground_truth)
+colnames(metadata)[3] <- "layer"
+
+# Spot Gene Expression
+express_path <- paste0('Dataset/', sample, '/', sample, '_filtered_feature_bc_matrix.h5')
+spot_express <- as.data.frame(Seurat::Read10X_h5(express_path))
+spot_express <- spot_express[, spots]
+genes <- rownames(spot_express)
+table(rownames(metadata) == colnames(spot_express))
+
+# Start SRTsim
+simSRT <- createSRT(count_in=as.matrix(spot_express),loc_in =metadata)
+# Tissue-wise simulation
+set.seed(1)
+## Estimate model parameters for data generation
+simSRT1 <- srtsim_fit(simSRT,sim_schem="tissue")
+## Generate synthetic data with estimated parameters
+simSRT1 <- srtsim_count(simSRT1)
+simu1_counts <- simCounts(simSRT1)
+
+## Compute metrics for comparison
+simSRT1 <- compareSRT(simSRT1)
+## Visualize Metrics
+visualize_metrics(simSRT1)
+
+# Domain-specific simulation
+set.seed(1)
+## Estimate model parameters for data generation
+simSRT2 <- srtsim_fit(simSRT,sim_schem="domain")
+## Generate synthetic data with estimated parameters
+simSRT2 <- srtsim_count(simSRT2)
+simu2_counts <- simCounts(simSRT2)
+
+## Compute metrics for comparison
+simSRT2 <- compareSRT(simSRT2)
+## Visualize Metrics
+visualize_metrics(simSRT2)
+
+# Sparsity Detection and Comparison
+sparsity_simu1 <- apply(simu1_counts,2,function(x) sum(as.numeric(x==0))/length(x))
+sparsity_simu2 <- apply(simu2_counts,2,function(x) sum(as.numeric(x==0))/length(x))
+sparsity_true <- apply(spot_express,2,function(x) sum(as.numeric(x==0))/length(x))
+hist(sparsity_simu1, breaks = 80, ylim = c(0,150))
+hist(sparsity_simu2, breaks = 80, ylim = c(0,150))
+hist(sparsity_true, breaks = 80, ylim = c(0,150))
+
+################## Imputation in tissue-wise simulation data ###################
+simu1_counts <- as.matrix(simCounts(simSRT1))
+simu1_metadata <- simSRT1@simcolData@listData
+simu1_metadata <- data.frame("X" = simu1_metadata$x,
+                             "Y" = simu1_metadata$y,
+                             "label" = simu1_metadata$label)
+K <- length(unique(simu1_metadata$label))
+neigh_mat <- find_neighbors(simu1_metadata[,c("X","Y")], 0.05)
+pred_express <- as.data.frame(simu1_counts)
+pred_express[] <- NA
+
+normalized_log2_express <- log2(t(t(simu1_counts)/colSums(simu1_counts) * median(colSums(simu1_counts))) + 1)
+simu1_spots <- colnames(simu1_counts)
+for(spot in seq_along(simu1_spots)){
+  # X <- design.matrix(normalized_express, neigh_mat, spot)
+  X <- as.data.frame(normalized_log2_express[, neigh_mat[spot, ]])
+  y <- normalized_log2_express[, spot]
+  model <- lm(y ~ ., data = X)
+  pred_y <- predict.lm(model, X)
+  pred_express[, spot] <- pred_y
+  print(spot)
+}
+spatial_imputed <- pred_express
+spatial_imputed[simu1_counts != 0] <- normalized_log2_express[simu1_counts != 0]
+
+############################ Clustering ##############################
+ARI_spatial <- c()
+for(i in c(1:45)){
+  spatial_imputed_result <- kmeans(t(spatial_imputed), K)
+  ARI<- mclust::adjustedRandIndex(simu1_metadata$layer, spatial_imputed_result$cluster)
+  print(ARI)
+  ARI_spatial <- c(ARI_spatial, ARI)
+}
+
+
+
+################## Imputation in domain-specific simulation data ###################
+simu2_counts <- as.matrix(simCounts(simSRT2))
+simu2_metadata <- simSRT2@simcolData@listData
+simu2_metadata <- data.frame("X" = simu2_metadata$x,
+                             "Y" = simu2_metadata$y,
+                             "label" = simu2_metadata$label)
+K <- length(unique(simu2_metadata$label))
+neigh_mat <- find_neighbors(simu2_metadata[,c("X","Y")], 0.05)
+pred_express <- as.data.frame(simu2_counts)
+pred_express[] <- NA
+
+normalized_log2_express <- log2(t(t(simu2_counts)/colSums(simu2_counts) * mean(colSums(simu2_counts))) + 1)
+simu2_spots <- colnames(simu2_counts)
+for(spot in seq_along(simu2_spots)){
+  # X <- design.matrix(normalized_express, neigh_mat, spot)
+  X <- as.data.frame(normalized_log2_express[, neigh_mat[spot, ]])
+  y <- normalized_log2_express[, spot]
+  model <- lm(y ~ ., data = X)
+  pred_y <- predict.lm(model, X)
+  pred_express[, spot] <- pred_y
+  print(spot)
+}
+spatial_imputed <- pred_express
+spatial_imputed[simu2_counts != 0] <- normalized_log2_express[simu2_counts != 0]
+
+############################ Clustering ##############################
+ARI_spatial <- c()
+for(i in c(1:50)){
+  cluster_result <- kmeans(t(spatial_imputed), K)
+  ARI<- mclust::adjustedRandIndex(simu2_metadata$label, cluster_result$cluster)
+  print(ARI)
+  ARI_spatial <- c(ARI_spatial, ARI)
+}
+ARI_raw <- c()
+for(i in c(1:50)){
+  cluster_result <- kmeans(t(spot_express), K)
+  ARI<- mclust::adjustedRandIndex(simu2_metadata$label, cluster_result$cluster)
+  print(ARI)
+  ARI_raw <- c(ARI_raw, ARI)
+}
+ARI_norm <- c()
+for(i in c(1:50)){
+  cluster_result <- kmeans(t(normalized_log2_express), K)
+  ARI<- mclust::adjustedRandIndex(simu2_metadata$label, cluster_result$cluster)
+  print(ARI)
+  ARI_norm <- c(ARI_norm, ARI)
+}
+ARI_df <- data.frame("RISE" = ARI_spatial, 
+                     "Log2_Norm" = ARI_norm,
+                     "Count" = ARI_raw)
+ARI_df_long <- melt(ARI_df,variable.name = "method")
+simu_p <- ggplot(ARI_df_long, aes(x = method,y = value,fill = method)) +
+  geom_boxplot(position = position_dodge(width = 0.8)) +
+  labs(title = "ARI Comparison of Simulated Data",
+       x = "Data Type",
+       y = "ARI") +
+  ylim(0,0.6) +
+  theme_minimal()
+ggsave("./SRTsim/simu_ARI.png",simu_p,dpi = 300)
+
+saveRDS(ARI_df,"./SRTsim/simu_ARI.rds")
+saveRDS(simu2_counts, "./SRTsim/simu_counts.rds")
+saveRDS(simu2_metadata, "./SRTsim/simu_metadata.rds")

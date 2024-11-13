@@ -1,0 +1,40 @@
+setwd("~/Desktop/PhD/SAVER/New_Spatial_Analysis/")
+
+sample_IDs <- c(151507:151510,151669:151676)
+for (i in seq_along(sample_IDs)){
+  sample <- sample_IDs[i]
+  print(sample)
+  data <- read.csv(paste0("SEDR_Imputed/",sample,"_SEDR_imputed.csv"), row.names = 1)
+  print(dim(data))
+  # Spot Label 
+  ground_truth <- read.csv(paste0('Dataset/',sample,'/cluster_labels.csv'),header = TRUE)
+  ground_truth <- ground_truth[!is.na(ground_truth[,'ground_truth']),]
+  rownames(ground_truth) <- lapply(ground_truth[,'key'],function(y) sub("^.*?_", "",y))
+  spots <- rownames(ground_truth)
+  K <- length(unique(ground_truth$ground_truth))
+  
+  # Spot Position
+  position_path <- paste0('Dataset/', sample, '/tissue_positions_list.csv')
+  spot_position <- read.csv(position_path, header = FALSE)
+  rownames(spot_position) <- spot_position[,1]
+  spot_position <- spot_position[,-1]
+  spot_position <- spot_position[match(spots,rownames(spot_position)),]
+  colnames(spot_position) <- c('1','2','3',"X",'Y')
+  spot_position <- spot_position[,c("X","Y")]
+  
+  # Spot Gene Expression
+  express_path <- paste0('Dataset/', sample, '/', sample, '_filtered_feature_bc_matrix.h5')
+  spot_express <- as.data.frame(Seurat::Read10X_h5(express_path))
+  spot_express <- spot_express[, spots]
+  genes <- rownames(spot_express)
+  print(dim(spot_express))
+  
+  ARI_record <- c()
+  for(i in c(1:50)){
+    clustering_result <- kmeans(data, K)
+    ARI <- mclust::adjustedRandIndex(ground_truth[,'ground_truth'], clustering_result$cluster)
+    print(paste0("The ", i, " time ARI: ", ARI))
+    ARI_record <- c(ARI_record, ARI)
+  }
+  saveRDS(ARI_record, paste0("SEDR_Imputed/",sample,"_SEDR_ARI.rds"))
+}

@@ -1,0 +1,14 @@
+Package: RISE
+Type: Package
+Title: Regression Imputation in SEquencing-based spatial transcriptomics data
+Version: 0.1.0
+Author: Yuansheng Peng
+Maintainer: Yuansheng Peng <pengys1225@gmail.com>
+Description: RISE is a method aiming at tackling the zero inflations in sequence-based spatial transcriptomics, which identifies neighboring spots of the target spot and use their expression to construct a spot-unqiue regression model. Once the regression model is estimated and the prediction is available, RISE will impute the zeros in the original data with corresponding predicted values. This package provides the `FindNeighbors` and `RISE` functions for ST data imputation, which RISE mainly relies on.
+License: GPL-3
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Imports:
+    parallel
