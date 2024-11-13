@@ -56,7 +56,7 @@ further explore the neighboring spots' information.
 # neighbors identification
 neighbors <- FindNeighbors(spot_example$coordinates, thresh = 0.3)
 
-# To summarize the number of neighbors
+# to summarize the number of neighbors
 summary(rowSums(neighbors))
 hist(rowSums(neighbors), breaks = 200)
 
@@ -72,8 +72,8 @@ matrix.
 
 ``` r
 spot_imputed <- RISE(spot_example$spot_express, spot_example$coordinates, thresh = 0.3)
-# After imputation
+# after imputation
 spot_imputed[1:5,1:5]
-# Before imputation
+# before imputation
 spot_example$spot_express[1:5,1:5]
 ```
