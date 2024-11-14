@@ -52,7 +52,6 @@ FindNeighbors <- function(coordinates, thresh = 0.05) {
 }
 
 
-library(parallel)
 
 #' RISE
 #'
@@ -66,6 +65,7 @@ library(parallel)
 #' @export
 RISE <- function(spot_express, coordinates, thresh = 0.05, norm = TRUE, cores = 2) {
 
+  library(parallel)
   if (ncol(coordinates) != 2) {
     stop("Error: 'coordinates' must be an nx2 matrix with x and y coordinates.")
   }
