@@ -1,20 +1,20 @@
 
 # RISE Package
 
-`RISE` is an R package designed for tackling zero inflation in
+`RISE` is an R package designed for tackling the zero inflation problem in
 sequence-based spatial transcriptomic (ST) data by leveraging
-neighborhood-based regression model.
+neighborhood-based regression models.
 
 ## Installation
 
-To install RISE from Github:
+You can install RISE directly from Github
 
 ```r
 devtools::install_github("YSPeng1225/RISE")
 library(RISE)
 ```
 
-To install RISE manually:
+or you can first download RISE and install it manually in your local computer
 
 ``` r
 install.packages("path/to/RISE", repos = NULL, type = "source")
@@ -26,10 +26,10 @@ library(RISE)
 To help users understand the data structure, RISE includes an example
 dataset, `spot_example`, with two elements:
 
-- `spot_express`: A sparse matrix of gene expression values with genes
+- `spot_express`: a sparse matrix of gene expression values with genes
   as rows and spots as columns.
 
-- `coordinates`: A matrix containing x and y coordinates for each spot.
+- `coordinates`: a matrix containing spatial x and y coordinates for spots.
 
 Load and print the example data:
 
@@ -42,15 +42,14 @@ print(spot_example$coordinates[1:10,])
 ## RISE Usage
 
 RISE mainly relies on two functions, `FindNeighbors` and `RISE`, with
-the first focusing on neighboring spot identification and the second
-imputing the zeros using neighbor-based regression predictions.
+the previous focusing on the neighborhood selection and the latter
+aiming to imputing zeros using regression models.
 
-The role of the `FindNeighbors` function is to let users adjust the number
-of spot’s neighbors through the parameter `thresh` (range from 0 to 1), with
+In `FindNeighbors` function, users can adjust the neighbor number
+of spots through the parameter `thresh` (range from 0 to 1), with
 larger `thresh` including more neighbors. `FindNeighbors` returns a
-logistic matrix containing the neighbors' indicator, which facilitates the
-direct application in `RISE`. However, there are simple examples to
-further explore the neighboring spots' information.
+Boolean matrix containing the neighbors' indicators, which facilitates the
+direct application in `RISE`. 
 
 ``` r
 # neighbors identification
@@ -66,8 +65,8 @@ neighbor_names <- apply(neighbors, 1, function(x) spots[x])
 neighbor_names[["spot29"]]
 ```
 
-Once the value of `thresh` to identify neighbors is determined by the
-user, the `RISE` function can be used to gain the imputed gene expression
+Once the value of `thresh` is determined by the
+user, the `RISE` function can be used to obtain the imputed gene expression
 matrix.
 
 ``` r
