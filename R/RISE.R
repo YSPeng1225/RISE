@@ -2,11 +2,11 @@
 #'
 #' `FindNeighbors` identifies neighboring spots based on their 2D coordinates,
 #' which is common in spatial transcriptomics (ST) data.
-#' Returns a logical matrix indicating neighbors for each spot.
+#' Returns a boolean matrix indicating neighbors for each spot.
 #'
 #' @param coordinates A nx2 matrix with x and y coordinates for each spot, where `n` is the number of spots.
 #' @param thresh Side length (0 to 1) of the square used to define neighborhood range; larger values include more neighbors.
-#' @return A nxn boolean matrix indicating neighbor relationships between spots.
+#' @return A nxn boolean matrix indicating neighbor relationships across spots.
 #' @export
 FindNeighbors <- function(coordinates, thresh = 0.05) {
 
@@ -59,9 +59,9 @@ FindNeighbors <- function(coordinates, thresh = 0.05) {
 #' @param spot_express A pxn matrix of spot expression, with rows as genes and columns as spots.
 #' @param coordinates An nx2 matrix with x and y coordinates of each spot, where rows in `coordinates` align with columns in `spot_express`.
 #' @param thresh Side length (0 to 1) of the square used to identify neighboring spots; larger values include more neighbors.
-#' @param norm Logical indicating if `spot_express` needs normalized. Default is TRUE, which normalizes `spot_express` by scaling factor method
-#' @param cores Number of CPU cores to use for parallel processing. Default is 2.
-#' @return A pxn matrix of spot expression with zeros imputed based on neighboring predictions.
+#' @param norm A boolean value indicating if `spot_express` needs normalization. The default is TRUE, which normalizes `spot_express` by the scaling factor method.
+#' @param cores Number of CPU cores to use for parallel processing. The default is 2.
+#' @return A pxn matrix of spot expression with zeros imputed by RISE.
 #' @export
 RISE <- function(spot_express, coordinates, thresh = 0.05, norm = TRUE, cores = 2) {
 
