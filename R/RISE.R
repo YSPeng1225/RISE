@@ -6,7 +6,7 @@
 #'
 #' @param coordinates A nx2 matrix with x and y coordinates for each spot, where `n` is the number of spots.
 #' @param thresh Side length (0 to 1) of the square used to define neighborhood range; larger values include more neighbors.
-#' @return A nxn logical matrix indicating neighbor relationships between spots.
+#' @return A nxn boolean matrix indicating neighbor relationships between spots.
 #' @export
 FindNeighbors <- function(coordinates, thresh = 0.05) {
 
