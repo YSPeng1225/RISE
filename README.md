@@ -37,6 +37,9 @@ Load and print the example data:
 data(spot_example)
 print(spot_example$spot_express[1:10,1:10])
 print(spot_example$coordinates[1:10,])
+# normalization
+norm_data <- log2(t(t(spot_example$spot_express)/colSums(spot_example$spot_express) * median(colSums(spot_example$spot_express))) + 1)
+
 ```
 
 ## RISE Usage
@@ -74,5 +77,5 @@ spot_imputed <- RISE(spot_example$spot_express, spot_example$coordinates, thresh
 # after imputation
 spot_imputed[1:5,1:5]
 # before imputation
-spot_example$spot_express[1:5,1:5]
+norm_data[1:5,1:5]
 ```
