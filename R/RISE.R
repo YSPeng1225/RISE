@@ -87,7 +87,7 @@ RISE <- function(spot_express, coordinates, thresh = 0.05, norm = TRUE, cores = 
   pred_express <- matrix(NA, nrow = nrow(spot_express), ncol = ncol(spot_express),
                          dimnames = dimnames(spot_express))
   cl <- parallel::makeCluster(cores)  # Create a cluster with the specified number of cores
-  clusterExport(cl, varlist = c("spot_express", "neigh_mat", "impute_spot"), envir = environment())
+  parallel::clusterExport(cl, varlist = c("spot_express", "neigh_mat", "impute_spot"), envir = environment())
   pred_list <- parLapply(cl, seq_len(ncol(spot_express)), impute_spot)
   stopCluster(cl)
 
